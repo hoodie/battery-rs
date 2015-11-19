@@ -19,8 +19,8 @@ fn cap_color(capacity:i32) -> (Styles,Styles) {
         0...5    => (Styles::Black,  Styles::Dim),
         5...10   => (Styles::Black,  Styles::Bold),
         10...20  => (Styles::Red,    Styles::Dim),
-        20...30  => (Styles::Red,    Styles::Bold),
-        30...40  => (Styles::Yellow, Styles::Dim),
+        20...30  => (Styles::Red,    Styles::Dim),
+        30...40  => (Styles::Red,    Styles::Bold),
         40...55  => (Styles::Yellow, Styles::Bold),
         45...65  => (Styles::Green,  Styles::Bold),
         65...100 => (Styles::Green,  Styles::Dim),
@@ -31,15 +31,16 @@ fn cap_color(capacity:i32) -> (Styles,Styles) {
 fn _test(){
     for cap in 1..20{
         let capacity = cap * 5;
-        let bar = SPARKS.chars().nth(capacity as usize / 10).unwrap_or('x');
+        let bar = SPARKS.chars().nth(10).unwrap_or('x');
+        let (color, style) = cap_color(capacity);
         let bar = bar.to_string()
-            .style(cap_color(capacity).0)
-            .style(cap_color(capacity).1);
-        print!("{bar}{capacity}%", capacity = capacity, bar = &bar);
+            .style(color)
+            .style(style);
+        print!("{bar}", bar = &bar);
     }
 }
 
-fn main(){
+fn print_capacity(){
     let capacity:i32 = read_capacity().unwrap_or("-1".to_owned())
                                       .trim()
                                       .parse().unwrap_or(-1);
@@ -48,6 +49,8 @@ fn main(){
             .style(cap_color(capacity).0)
             .style(cap_color(capacity).1);
         println!("{bar}{capacity}%", capacity = capacity, bar = &bar);
+}
 
-
+fn main(){
+    print_capacity();
 }
