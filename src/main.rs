@@ -2,6 +2,9 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Result;
 
+#[macro_use] extern crate clap;
+use clap::{App, Arg};
+
 extern crate colors;
 use colors::{Styles,Style};
 
@@ -28,7 +31,17 @@ fn cap_color(capacity:i32) -> (Styles,Styles) {
     }
 }
 
-fn _test(){
+fn test(){
+    for (i,c) in SPARKS.chars().enumerate(){
+        let (color, style) = cap_color((i as i32)*10);
+        let bar = c.to_string()
+            .style(color)
+            .style(style);
+        print!("{bar}", bar = &bar);
+    }
+}
+
+fn test_colors(){
     for cap in 1..20{
         let capacity = cap * 5;
         let bar = SPARKS.chars().nth(10).unwrap_or('x');
@@ -40,17 +53,60 @@ fn _test(){
     }
 }
 
-fn print_capacity(){
+fn print_capacity_simple( ){
     let capacity:i32 = read_capacity().unwrap_or("-1".to_owned())
                                       .trim()
                                       .parse().unwrap_or(-1);
-        let bar = SPARKS.chars().nth(capacity as usize / 10).unwrap_or('x');
-        let bar = bar.to_string()
-            .style(cap_color(capacity).0)
-            .style(cap_color(capacity).1);
+        println!("{}", capacity );
+}
+
+fn print_capacity( percent:bool ){
+    let capacity:i32 = read_capacity().unwrap_or("-1".to_owned())
+        .trim()
+        .parse().unwrap_or(-1);
+    let bar = SPARKS.chars().nth(capacity as usize / 10).unwrap_or('x');
+    let bar = bar.to_string()
+        .style(cap_color(capacity).0)
+        .style(cap_color(capacity).1);
+    if percent{
         println!("{bar}{capacity}%", capacity = capacity, bar = &bar);
+    } else {
+        println!("{bar}{capacity}", capacity = capacity, bar = &bar);
+    }
 }
 
 fn main(){
-    print_capacity();
+    let matches = App::new("battery")
+        .version(&crate_version!()[..])
+        .author("Hendrik Sollich <hendrik@hoodie.de>")
+        .about("better acpi terminal tool except ramble yamble")
+        //.arg_required_else_help(true)
+
+        .arg( Arg::with_name("test")
+              .help("tests")
+              .short("t").long("test"))
+
+        .arg( Arg::with_name("simple")
+              .help("simple display")
+              .short("s").long("simple"))
+
+        .arg( Arg::with_name("test colors")
+              .help("tests colors")
+              .short("c").long("colors"))
+
+        .arg( Arg::with_name("nopercent")
+              .help("don't show percent sign ( zsh compatibility ) ")
+              .short("n").long("nopercent"))
+
+        .get_matches();
+
+    if matches.is_present("test") {
+        test();
+    } else if matches.is_present("test colors") {
+        test_colors();
+    } else if matches.is_present("simple") {
+        print_capacity_simple();
+    } else {
+        print_capacity(!matches.is_present("nopercent"));
+    }
 }
