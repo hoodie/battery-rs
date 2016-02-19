@@ -1,6 +1,9 @@
-use std::fs::File;
+#![feature(alloc_system)]
+extern crate alloc_system;
 use std::io::Read;
 use std::io::Result;
+use std::fs::File;
+use std::path::{Path,PathBuf};
 
 #[macro_use] extern crate clap;
 use clap::{App, Arg};
@@ -10,8 +13,20 @@ use colors::{Styles,Style};
 
 const SPARKS:&'static str="_▁▁▂▃▄▄▅▆▇██";
 
-fn read_capacity() -> Result<String>{
-    let mut file = try!(File::open("/sys/class/power_supply/BAT0/capacity"));
+fn list_batteries() -> Result<Vec<PathBuf>>
+{
+    let path = "/sys/class/power_supply/";
+    //let path = "./power_supply/";
+    std::fs::read_dir(path).map(|entries|entries
+                                .filter_map(|entry| entry.ok())
+                                .map(|entry| entry.path().join("capacity"))
+                                .filter(|path| path.exists())
+                                .collect::<Vec<PathBuf>>()
+                               )
+}
+
+fn read_capacity(battery_path:&Path) -> Result<String>{
+    let mut file = try!(File::open(battery_path));
     let mut capacity = String::new();
     file.read_to_string(&mut capacity).unwrap();
     Ok(capacity)
@@ -53,25 +68,40 @@ fn test_colors(){
     }
 }
 
-fn print_capacity_simple( ){
-    let capacity:i32 = read_capacity().unwrap_or("-1".to_owned())
-                                      .trim()
-                                      .parse().unwrap_or(-1);
-        println!("{}", capacity );
+fn write_capacity_simple(battery_path:&Path) -> String{
+    let capacity:i32 = read_capacity(battery_path).unwrap_or("-1".to_owned())
+        .trim()
+        .parse()
+        .unwrap_or(-1);
+
+    format!("{}", capacity)
 }
 
-fn print_capacity( percent:bool ){
-    let capacity:i32 = read_capacity().unwrap_or("-1".to_owned())
+fn write_capacity(battery_path:&Path, percent:bool) -> String{
+    let capacity:i32 = read_capacity(battery_path).unwrap_or("-1".to_owned())
         .trim()
         .parse().unwrap_or(-1);
+
     let bar = SPARKS.chars().nth(capacity as usize / 10).unwrap_or('x');
     let bar = bar.to_string()
         .style(cap_color(capacity).0)
         .style(cap_color(capacity).1);
+
     if percent{
-        println!("{bar}{capacity}%", capacity = capacity, bar = &bar);
+        format!("{bar}{capacity}%", capacity = capacity, bar = &bar)
     } else {
-        println!("{bar}{capacity}", capacity = capacity, bar = &bar);
+        format!("{bar}{capacity}", capacity = capacity, bar = &bar)
+    }
+}
+
+fn for_each_battery<F>(func:F) where F: Fn(&Path) -> String{
+    if let Ok(paths) = list_batteries(){
+        let buf = paths.iter()
+                       .map(|pbuf|func(&pbuf))
+                       .collect::<String>();
+        println!("{}", buf);
+    } else {
+        println!("no battery found");
     }
 }
 
@@ -98,15 +128,31 @@ fn main(){
               .help("don't show percent sign ( zsh compatibility ) ")
               .short("n").long("nopercent"))
 
+        .arg( Arg::with_name("list")
+              .help("lists batteries")
+              .short("l").long("list"))
+
         .get_matches();
 
     if matches.is_present("test") {
         test();
-    } else if matches.is_present("test colors") {
+    }
+
+    else if matches.is_present("test colors") {
         test_colors();
-    } else if matches.is_present("simple") {
-        print_capacity_simple();
-    } else {
-        print_capacity(!matches.is_present("nopercent"));
+    }
+
+    else if matches.is_present("simple") {
+        for_each_battery(|battery_path| write_capacity_simple(battery_path));
+    }
+
+    else if matches.is_present("list") {
+    }
+
+    else
+    {
+        for_each_battery(|battery_path|
+                         write_capacity(battery_path, !matches.is_present("nopercent"))
+                        );
     }
 }
