@@ -1,5 +1,8 @@
-#![feature(alloc_system)]
-extern crate alloc_system;
+#![cfg_attr(feature = "dev", allow(unstable_features))]
+#![cfg_attr(feature = "dev", feature(plugin))]
+#![cfg_attr(feature = "dev", plugin(clippy))]
+#![cfg_attr(feature = "dev", allow(blacklisted_name))]
+
 use std::io::Read;
 use std::io::Result;
 use std::fs::File;
@@ -36,7 +39,7 @@ fn cap_color(capacity:i32) -> (Styles,Styles) {
     match capacity{
         0...5    => (Styles::Black,  Styles::Dim),
         5...10   => (Styles::Black,  Styles::Bold),
-        10...20  => (Styles::Red,    Styles::Dim),
+        10...20  |
         20...30  => (Styles::Red,    Styles::Dim),
         30...40  => (Styles::Red,    Styles::Bold),
         40...55  => (Styles::Yellow, Styles::Bold),
@@ -97,7 +100,7 @@ fn write_capacity(battery_path:&Path, percent:bool) -> String{
 fn for_each_battery<F>(func:F) where F: Fn(&Path) -> String{
     if let Ok(paths) = list_batteries(){
         let buf = paths.iter()
-                       .map(|pbuf|func(&pbuf))
+                       .map(|pbuf|func(pbuf))
                        .collect::<String>();
         println!("{}", buf);
     } else {
