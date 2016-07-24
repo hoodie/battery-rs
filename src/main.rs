@@ -11,13 +11,14 @@ use std::path::{Path,PathBuf};
 #[macro_use] extern crate clap;
 use clap::{App, Arg};
 
-extern crate colors;
-use colors::{Styles,Style};
+extern crate termion;
+use termion::color;
+use termion::color::Fg;
+
 
 const SPARKS:&'static str="_▁▁▂▃▄▄▅▆▇██";
 
-fn list_batteries() -> Result<Vec<PathBuf>>
-{
+fn list_batteries() -> Result<Vec<PathBuf>> {
     let path = "/sys/class/power_supply/";
     //let path = "./power_supply/";
     std::fs::read_dir(path).map(|entries|entries
@@ -35,43 +36,40 @@ fn read_capacity(battery_path:&Path) -> Result<String>{
     Ok(capacity)
 }
 
-fn cap_color(capacity:i32) -> (Styles,Styles) {
+
+
+use std::fmt::Display;
+fn format_cap<T:Display>(content:T, capacity:i32) -> String{
     match capacity{
-        0...5    => (Styles::Black,  Styles::Dim),
-        5...10   => (Styles::Black,  Styles::Bold),
+        0...5    => format!("{1}{0}", content, Fg(color::Red)),
+        5...10   => format!("{1}{0}", content, Fg(color::Red)),
         10...20  |
-        20...30  => (Styles::Red,    Styles::Dim),
-        30...40  => (Styles::Red,    Styles::Bold),
-        40...55  => (Styles::Yellow, Styles::Bold),
-        45...65  => (Styles::Green,  Styles::Bold),
-        65...100 => (Styles::Green,  Styles::Dim),
-        _ => (Styles::Black, Styles::Inverse)
+        20...30  => format!("{1}{0}", content, Fg(color::LightRed)),
+        30...40  => format!("{1}{0}", content, Fg(color::Yellow)),
+        40...55  => format!("{1}{0}", content, Fg(color::LightYellow)),
+        45...65  => format!("{1}{0}", content, Fg(color::Green)),
+        65...100 => format!("{1}{0}", content, Fg(color::LightGreen)),
+        _        => format!("{1}{0}", content, Fg(color::Black))
     }
 }
 
 fn test(){
-    for (i,c) in SPARKS.chars().enumerate(){
-        let (color, style) = cap_color((i as i32)*10);
-        let bar = c.to_string()
-            .style(color)
-            .style(style);
+    for (i,c) in SPARKS.chars().enumerate() {
+        let bar = format_cap(c, (i as i32)*10);
         print!("{bar}", bar = &bar);
     }
 }
 
-fn test_colors(){
+fn test_colors() {
     for cap in 1..20{
         let capacity = cap * 5;
         let bar = SPARKS.chars().nth(10).unwrap_or('x');
-        let (color, style) = cap_color(capacity);
-        let bar = bar.to_string()
-            .style(color)
-            .style(style);
+        let bar = format_cap(bar, capacity);
         print!("{bar}", bar = &bar);
     }
 }
 
-fn write_capacity_simple(battery_path:&Path) -> String{
+fn write_capacity_simple(battery_path:&Path) -> String {
     let capacity:i32 = read_capacity(battery_path).unwrap_or("-1".to_owned())
         .trim()
         .parse()
@@ -80,20 +78,23 @@ fn write_capacity_simple(battery_path:&Path) -> String{
     format!("{}", capacity)
 }
 
-fn write_capacity(battery_path:&Path, percent:bool) -> String{
+fn write_capacity(battery_path:&Path, percent:bool) -> String {
     let capacity:i32 = read_capacity(battery_path).unwrap_or("-1".to_owned())
         .trim()
         .parse().unwrap_or(-1);
 
     let bar = SPARKS.chars().nth(capacity as usize / 10).unwrap_or('x');
-    let bar = bar.to_string()
-        .style(cap_color(capacity).0)
-        .style(cap_color(capacity).1);
-
+    let bar = format_cap(bar, capacity);
     if percent{
-        format!("{bar}{capacity}%", capacity = capacity, bar = &bar)
+        format!("{bar}{style} {capacity}%",
+                capacity = capacity,
+                style = termion::style::Bold,
+                bar = &bar)
     } else {
-        format!("{bar}{capacity}", capacity = capacity, bar = &bar)
+        format!("{bar}{style} {capacity}",
+                capacity = capacity,
+                style = termion::style::Bold,
+                bar = &bar)
     }
 }
 

@@ -1,8 +1,8 @@
 [package]
+authors = ["Hendrik Sollich <hendrik@hoodie.de>"]
 name = "battery"
 version = "0.2.0"
-authors = ["Hendrik Sollich <hendrik@hoodie.de>"]
 
 [dependencies]
-colors = {git = "https://github.com/jtuchsen/colors" }
 clap = "*"
+termion = "*"
